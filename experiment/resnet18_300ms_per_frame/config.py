@@ -1,18 +1,18 @@
 # --- Lyft configs ---
-DEBUG = True
+DEBUG = False
 
 cfg = {
     'format_version': 4,
     'data_path': "/home/axot/lyft/data",
     'model_params': {
         'model_architecture': 'resnet18',
-        'history_num_frames': 10,
+        'history_num_frames': 20,
         'future_num_frames': 50,
         'lr': 1e-3,
         'weight_path': "",
         
         'history_step_size': 1,
-        'history_delta_time': 0.1,
+        'history_delta_time': 0.3,
         'future_step_size': 1,
         'future_delta_time': 0.1,
     },
@@ -45,6 +45,6 @@ cfg = {
     'train_params': {
         'epoch': 1 if DEBUG else 2,
         'max_num_steps': 100 if DEBUG else 70000,
-        'checkpoint_steps': 20 if DEBUG else 4500,
+        'checkpoint_steps': 50 if DEBUG else 20000,
     }
 }

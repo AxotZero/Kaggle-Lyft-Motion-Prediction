@@ -30,8 +30,8 @@ cfg = {
 
     'train_data_loader': {
         'key': 'scenes/train.zarr',
-        'batch_size': 16,
-        'shuffle': True,
+        'batch_size': 32,
+        'shuffle': False,
         'num_workers': 4
     },
     
@@ -44,7 +44,7 @@ cfg = {
 
     'train_params': {
         'epoch': 1 if DEBUG else 2,
-        'max_num_steps': 100 if DEBUG else 18000,
-        'checkpoint_steps': 50 if DEBUG else 4500,
+        'max_num_steps': 100 if DEBUG else 70000,
+        'checkpoint_steps': 50 if DEBUG else 20000,
     }
 }

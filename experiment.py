@@ -9,6 +9,10 @@ import pandas as pd
 import torch
 from torch import nn, optim, Tensor
 from torch.utils.data import DataLoader
+from ranger import Ranger  # this is from ranger.py
+from ranger import RangerVA  # this is from ranger913A.py
+from ranger import RangerQH  # this is from rangerqh.py
+
 
 from l5kit.configs import load_config_data
 from l5kit.data import LocalDataManager, ChunkedDataset
@@ -18,11 +22,13 @@ from l5kit.evaluation import write_pred_csv
 from l5kit.evaluation.metrics import neg_multi_log_likelihood
 from l5kit.geometry import transform_points
 
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-e', '--exp_id', type=str, default='', required=True,
                         help='path of your experiment directory name')
     return parser.parse_args()
+
 
 def initialize(exp_id):
 
@@ -33,11 +39,12 @@ def initialize(exp_id):
 
     # load experiment config and model architecture
     module_path = f'experiment.{exp_id}'
-    exec(f'from {module_path}.config import cfg', globals()) 
+    exec(f'from {module_path}.config import *', globals()) 
     exec(f'from {module_path}.model import LyftModel', globals())
     exec(f'from {module_path}.model import forward', globals())
-    print(cfg)
+    # print('GPU=', GPU)
     
+
 def get_dm():
     # set env variable for data
     DIR_INPUT = cfg["data_path"]
@@ -47,7 +54,18 @@ def get_dm():
 
 
 def get_device():
-    return torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    gpu = None
+    if not ('GPU' in globals()):
+        gpu = True
+    else:
+        gpu = GPU
+
+    print('GPU =', gpu)
+
+    if gpu is False:
+        return "cpu"
+    else:
+        return torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def load_train_data():
@@ -62,6 +80,7 @@ def load_train_data():
                                 shuffle=train_cfg["shuffle"],
                                 batch_size=train_cfg["batch_size"], 
                                 num_workers=train_cfg["num_workers"])
+    print('len(train_dataloader):', len(train_dataloader))
     return train_dataloader
 
 
@@ -86,8 +105,8 @@ def get_model(cfg):
     if weight_path:
         model.load_state_dict(torch.load(weight_path))
 
-    print('cfg = ', cfg)
-    print('model =', model)
+    # print('cfg = ', cfg)
+    # print('model =', model)
 
 
     return model
@@ -115,13 +134,22 @@ def criterion(
 
     assert gt.shape == (batch_size, future_len, num_coords), f"expected 2D (Time x Coords) array for gt, got {gt.shape}"
     assert confidences.shape == (batch_size, num_modes), f"expected 1D (Modes) array for gt, got {confidences.shape}"
-    assert torch.allclose(torch.sum(confidences, dim=1), confidences.new_ones((batch_size,))), "confidences should sum to 1"
+
+    # assert torch.allclose(torch.sum(confidences, dim=1) , 
+    #                         confidences.new_ones((batch_size,)) ), "confidences should sum to 1"
+    if not (torch.allclose(torch.sum(confidences, dim=1) , confidences.new_ones((batch_size,)) )):
+        print('confidences:', confidences)
+        print('torch.sum:', torch.sum(confidences, dim=1))
+        # print('confidences:', confidences.new_ones((batch_size,)))
+        raise "confidences should sum to 1"
+
     assert avails.shape == (batch_size, future_len), f"expected 1D (Time) array for gt, got {avails.shape}"
     # assert all data are valid
     assert torch.isfinite(pred).all(), "invalid value found in pred"
     assert torch.isfinite(gt).all(), "invalid value found in gt"
     assert torch.isfinite(confidences).all(), "invalid value found in confidences"
     assert torch.isfinite(avails).all(), "invalid value found in avails"
+    
 
     # convert to (batch_size, num_modes, future_len, num_coords)
     gt = torch.unsqueeze(gt, 1)  # add modes
@@ -153,7 +181,8 @@ def train(model, exp_id):
     device = get_device()
     
     model.to(device)
-    optimizer = optim.Adam(model.parameters(), lr=cfg["model_params"]["lr"])
+    # optimizer = optim.Adam(model.parameters(), lr=cfg["model_params"]["lr"])
+    optimizer = Ranger(model.parameters(), lr=cfg["model_params"]["lr"])
     train_dataloader = load_train_data()
     start = time.time()
 
@@ -206,11 +235,11 @@ def train(model, exp_id):
                 checkpoint_loss = []
 
 
-        # save train result
-        results = pd.DataFrame(train_result)
-        results.to_csv(f"experiment/{exp_id}/train_result.csv", index=False)
-        print(f"Total training time is {(time.time()-start)/60} mins")
-        print(results.head())
+    # save train result
+    results = pd.DataFrame(train_result)
+    results.to_csv(f"experiment/{exp_id}/train_result.csv", index=False)
+    print(f"Total training time is {(time.time()-start)/60} mins")
+    print(results.head())
 
 
 def inference(model, exp_id):

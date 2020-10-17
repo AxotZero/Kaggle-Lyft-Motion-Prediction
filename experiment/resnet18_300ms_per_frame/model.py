@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 from torchvision.models.resnet import resnet50, resnet18, resnet34, resnet101
-# debug = True
+
 class LyftModel(nn.Module):
 
     def __init__(self, cfg, num_modes=3):
@@ -47,37 +47,19 @@ class LyftModel(nn.Module):
 
     def forward(self, x):
         x = self.backbone.conv1(x)
-        # if (torch.isfinite(x).all()) == False: print(1111)
-
         x = self.backbone.bn1(x)
-        # if (torch.isfinite(x).all()) == False: print(2222)
-        
         x = self.backbone.relu(x)
-        # if (torch.isfinite(x).all()) == False: print(3333)
-
         x = self.backbone.maxpool(x)
-        # if (torch.isfinite(x).all()) == False: print(4444)
 
         x = self.backbone.layer1(x)
-        # if not(torch.isfinite(x).all()): print(5555)
-        
         x = self.backbone.layer2(x)
-        # if not(torch.isfinite(x).all()): print(6666)
-
         x = self.backbone.layer3(x)
-        # if not(torch.isfinite(x).all()): print(7777)
-
         x = self.backbone.layer4(x)
-        # if not(torch.isfinite(x).all()): print(8888)
 
         x = self.backbone.avgpool(x)
-        # if not(torch.isfinite(x).all()): print(9999)
-
         x = torch.flatten(x, 1)
 
         x = self.head(x)
-        # if not(torch.isfinite(x).all()): print(0000)
-        
         x = self.logit(x)
 
         # pred (batch_size)x(modes)x(time)x(2D coords)
@@ -86,8 +68,6 @@ class LyftModel(nn.Module):
         pred, confidences = torch.split(x, self.num_preds, dim=1)
         pred = pred.view(bs, self.num_modes, self.future_len, 2)
         assert confidences.shape == (bs, self.num_modes)
-
-        print('confidences before:', confidences) 
         confidences = torch.softmax(confidences, dim=1)
         return pred, confidences
 
