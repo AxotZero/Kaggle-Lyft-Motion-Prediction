@@ -52,7 +52,7 @@ class EfficientnetBlock(torch.nn.Module):
         x = self.backbone(x)
         preds, confidences  = torch.split(x, self.num_preds, dim=1)
         preds = preds.view(x.shape[0], 1, 50, 2)
-        return confidences, preds
+        return preds, confidences
 
 
 def forward(data, model, device, criterion):

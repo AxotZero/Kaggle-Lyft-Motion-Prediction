@@ -42,6 +42,10 @@ def initialize(exp_id):
     exec(f'from {module_path}.config import *', globals()) 
     exec(f'from {module_path}.model import LyftModel', globals())
     exec(f'from {module_path}.model import forward', globals())
+    try:
+        exec(f'from {module_path}.model import load_pretrained', globals())
+    except Exception as e:
+        print(f"There is no load_pretrained function in {module_path}.")
     # print('GPU=', GPU)
     
 
@@ -103,10 +107,9 @@ def get_model(cfg):
     #load weight if there is a pretrained model
     weight_path = cfg["model_params"]["weight_path"]
     if weight_path:
-        model.load_state_dict(torch.load(weight_path))
+        load_pretrained(model, cfg)
 
-    # print('cfg = ', cfg)
-    # print('model =', model)
+    print('model =', model)
 
 
     return model
@@ -206,40 +209,51 @@ def train(model, exp_id):
         num_iter = cfg["train_params"]["max_num_steps"]
         progress_bar = tqdm(range(num_iter))
 
+        
         for i in progress_bar:
-            data = next(tr_it)
-            loss, _, _ = forward(data, model, device, criterion)
+            try:
+                data = next(tr_it)
+                loss, _, _ = forward(data, model, device, criterion)
 
-            # Backward pass
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+                # Backward pass
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
 
-            total_loss.append(loss.item())
-            checkpoint_loss.append(loss.item())
-            progress_bar.set_description(f"loss: {loss.item()} checkpoint_loss(avg): {np.mean(checkpoint_loss)}")
+                total_loss.append(loss.item())
+                checkpoint_loss.append(loss.item())
+                progress_bar.set_description(f"loss: {loss.item()} checkpoint_loss(avg): {np.mean(checkpoint_loss)}")
 
-            if ((i > 0 and i % cfg['train_params']['checkpoint_steps'] == 0) 
-                or i == num_iter-1):
-                # save model per checkpoint
+                if ((i > 0 and i % cfg['train_params']['checkpoint_steps'] == 0) 
+                    or i == num_iter-1):
+                    # save model per checkpoint
+                    torch.save(model.state_dict(), 
+                                f'{save_model_dir}/epoch{epoch:02d}_iter{i:05d}.pth')
+
+                    train_result['epoch'].append(epoch)
+                    train_result['iter'].append(i)
+                    train_result['loss'].append(loss.item())
+                    train_result['checkpoint_loss(avg)'].append(np.mean(checkpoint_loss))
+                    train_result['total_loss(avg)'].append(np.mean(total_loss))
+                    train_result['time(minute)'].append((time.time()-start)/60)
+
+                    checkpoint_loss = []
+            except KeyboardInterrupt:
                 torch.save(model.state_dict(), 
-                            f'{save_model_dir}/epoch{epoch:02d}_iter{i:05d}.pth')
-
-                train_result['epoch'].append(epoch)
-                train_result['iter'].append(i)
-                train_result['loss'].append(loss.item())
-                train_result['checkpoint_loss(avg)'].append(np.mean(checkpoint_loss))
-                train_result['total_loss(avg)'].append(np.mean(total_loss))
-                train_result['time(minute)'].append((time.time()-start)/60)
-
-                checkpoint_loss = []
+                            f'{save_model_dir}/interrupt_epoch{epoch:02d}_iter{i:05d}.pth')
+                # save train result
+                results = pd.DataFrame(train_result)
+                results.to_csv(f"experiment/{exp_id}/interrupt_train_result.csv", index=False)
+                print(f"Total training time is {(time.time()-start)/60} mins")
+                print(results)
+                raise KeyboardInterrupt
 
 
     # save train result
     results = pd.DataFrame(train_result)
     results.to_csv(f"experiment/{exp_id}/train_result.csv", index=False)
     print(f"Total training time is {(time.time()-start)/60} mins")
-    print(results.head())
+    print(results)
 
 
 def inference(model, exp_id):
@@ -284,6 +298,52 @@ def inference(model, exp_id):
             coords=np.concatenate(future_coords_offsets_pd),
             confs = np.concatenate(confidences_list)
             )
+
+
+def inference2(model, exp_id):
+    device = get_device()
+    # predict
+    model.eval()
+    torch.set_grad_enabled(False)
+    test_dataloader = load_test_data()
+    # store information for evaluation
+    future_coords_offsets_pd = []
+    timestamps = []
+    confidences_list = []
+    agent_ids = []
+
+    progress_bar = tqdm(test_dataloader)
+
+    for data in progress_bar:
+        
+        _, preds, confidences = forward(data, model, device, criterion)
+
+        #fix for the new environment
+        preds = preds.cpu().numpy()
+        world_from_agents = data["world_from_agent"].numpy()
+        centroids = data["centroid"].numpy()
+        coords_offset = []
+        
+        # convert into world coordinates and compute offsets
+        for idx in range(len(preds)):
+            for mode in range(3):
+                preds[idx, mode, :, :] = transform_points(preds[idx, mode, :, :], world_from_agents[idx]) - centroids[idx][:2]
+
+        future_coords_offsets_pd.append(preds.copy())
+        confidences_list.append(confidences.cpu().numpy().copy())
+        timestamps.append(data["timestamp"].numpy().copy())
+        agent_ids.append(data["track_id"].numpy().copy()) 
+
+    #create submission to submit to Kaggle
+    pred_path = f'experiment/{exp_id}/submission2.csv'
+    write_pred_csv(pred_path,
+            timestamps=np.concatenate(timestamps),
+            track_ids=np.concatenate(agent_ids),
+            coords=np.concatenate(future_coords_offsets_pd),
+            confs = np.concatenate(confidences_list)
+            )
+
+
 
 def main():
     args = parse_args()
