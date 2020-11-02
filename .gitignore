@@ -1,6 +1,8 @@
 # ignore data folder
 /data
 
+*.pkl
+
 *.pth
 
 *.csv
