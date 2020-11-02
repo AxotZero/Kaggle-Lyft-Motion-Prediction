@@ -9,8 +9,9 @@ cfg = {
         'history_num_frames': 10,
         'future_num_frames': 50,
         'lr': 1e-3,
-        'weight_path': "/home/axot/lyft/experiment/resnet_3d/save_models/epoch01_iter69999.pth",
-        
+        # 'weight_path': "/home/axot/lyft/experiment/resnet_3d/epoch01_iter69999.pth",
+        "weight_path": "/home/axot/lyft/experiment/resnet_3d/pretrain_model/112_v5.pth",
+        # "weight_path": "",
         'history_step_size': 1,
         'history_delta_time': 0.1,
         'future_step_size': 1,
@@ -24,13 +25,20 @@ cfg = {
         'satellite_map_key': 'aerial_map/aerial_map.png',
         'semantic_map_key': 'semantic_map/semantic_map.pb',
         'dataset_meta_key': 'meta.json',
-        'filter_agents_threshold': 0.5,
+        # 'filter_agents_threshold': 0.5,
+        'filter_agents_threshold': 0.7,
         'disable_traffic_light_faces': False
     },
     'train_data_loader': {
         'key': 'scenes/train.zarr',
         'batch_size': 32,
         'shuffle': True,
+        'num_workers': 2
+    },
+    'val_data_loader':{
+        'key': 'scenes/validate.zarr',
+        'batch_size': 64,
+        'shuffle': False,
         'num_workers': 4
     },
     'test_data_loader': {
@@ -41,8 +49,9 @@ cfg = {
     },
 
     'train_params': {
-        'epoch': 1 if DEBUG else 2,
-        'max_num_steps': 4 if DEBUG else 70_000,
-        'checkpoint_steps': 2 if DEBUG else 13_000,
+        'epoch': 1 if DEBUG else 10,
+        'max_num_steps': 4 if DEBUG else 57_001,
+        'checkpoint_steps': 2 if DEBUG else 5_000,
+        'validation_steps': 1 if DEBUG else 10_000,
     }
 }

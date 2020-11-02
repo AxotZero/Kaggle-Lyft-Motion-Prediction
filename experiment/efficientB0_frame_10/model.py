@@ -42,11 +42,11 @@ class LyftModel(torch.nn.Module):
         return pred, confidences
 
 
-def forward(data, model, device, criterion):
+def forward(data, model, device):
     inputs = data["image"].to(device)
     target_availabilities = data["target_availabilities"].to(device)
     targets = data["target_positions"].to(device)
     # Forward pass
     preds, confidences = model(inputs)
-    loss = criterion(targets, preds, confidences, target_availabilities)
-    return loss, preds, confidences
+    # loss = criterion(targets, preds, confidences, target_availabilities)
+    return preds, confidences

@@ -17,7 +17,7 @@ cfg = {
         'future_delta_time': 0.1,
     },
     'raster_params': {
-        'raster_size': [224, 224],
+        'raster_size': [400, 400],
         'pixel_size': [0.5, 0.5],
         'ego_center': [0.25, 0.5],
         'map_type': 'py_semantic',
@@ -29,7 +29,7 @@ cfg = {
     },
     'train_data_loader': {
         'key': 'scenes/train.zarr',
-        'batch_size': 32,
+        'batch_size': 16,
         'shuffle': True,
         'num_workers': 4
     },

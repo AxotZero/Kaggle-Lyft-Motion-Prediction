@@ -38,16 +38,15 @@ class LyftModel(torch.nn.Module):
         return pred, confidences
 
 
-def load_pretrained(model, weight_path):
-
-    model.load_state_dict(torch.load(weight_path, map_location='cpu'))
-    print(f'Load pretrained from {weight_path}')
+def load_pretrained(model, cfg):
+    weight_path = cfg['model_params']['weight_path']
+    model.load_state_dict(torch.load(weight_path))
 
     return model
 
 
 
-def forward(data, model, device, criterion):
+def forward(data, model, device):
     images = data["image"]
     total_frames_num = (images.shape[1] - 3) // 2
 
@@ -65,10 +64,7 @@ def forward(data, model, device, criterion):
     # get inputs
     inputs = torch.Tensor(np.concatenate((agents, egos, map_sem), axis=1)).to(device)
 
-    target_availabilities = data["target_availabilities"].to(device)
-    targets = data["target_positions"].to(device)
-    
     # Forward pass
     preds, confidences = model(inputs)
-    loss = criterion(targets, preds, confidences, target_availabilities)
-    return loss, preds, confidences
+    
+    return preds, confidences
