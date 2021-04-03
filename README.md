@@ -5,5 +5,9 @@ The model training and infercing code for Kaggle Competition, Lyft Motion Predic
 
 ## Usage
 ```
+## After you complete your config.py and model.py in ./experiments,
 python3 run.py -e {your config and model folder in ./experiments}
 ```
+
+## Poster for TaiwanTech Graduation Project Competition
+![](https://i.imgur.com/wYcnjG3.jpg)
