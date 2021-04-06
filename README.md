@@ -1,5 +1,8 @@
 # Kaggle-Lyft-Motion-Prediction
 The model training and infercing code for Kaggle Competition, Lyft Motion Prediction For Autonomous Vehicles.
+
+[Competition Link](https://www.kaggle.com/c/lyft-motion-prediction-autonomous-vehicles)
+
 ## Get Silver Medal~~
 ![](https://i.imgur.com/iKSPscE.png)
 
